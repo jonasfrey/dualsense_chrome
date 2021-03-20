@@ -16,12 +16,18 @@
         background:#333;
         color:#eee;
       }
-      .console{
+      .console div{
         font-size: 10px;
         font-family: monospace;
         white-space: pre;
 
         color:green;
+      }
+      .active{
+        color: lightblue !important;
+      }
+      .passive{
+        color: black !important;
       }
     </style>
   </head>
@@ -38,7 +44,7 @@
 
     <script type="text/javascript">
     
-    function get_bar_string(value, max, ){
+    function get_bar_string(value, max, width = 255){
   value = parseInt(value)
   var str = ""
   for(var i =0;i<max;i++){
@@ -176,7 +182,7 @@
             }
 
             device.addEventListener("inputreport", event => {
-              console.log("funbction executed");
+              //console.log("funbction executed");
               const { data, device, reportId } = event;
               const value = data.getUint8(0);
               
@@ -185,13 +191,65 @@
               var data_view = data; 
               var console_div = document.getElementById("console");
               var c_str = ""
+              window.data_array = [];
+              var classes = ["normal", "active", "passive"]
               for(var i = 0; i< data_view.byteLength; i++){
-                
-                c_str += get_bar_string(data_view.getUint8(i), 255) + "\n";
+                var el_id = "bar_string_"+i;
+                var el = document.getElementById(el_id);
+                if(el == undefined){
+                  var el = document.createElement("div");
+                  el.id = el_id;
+                  console_div.appendChild(el);
+                  el.onclick = function(){
+                    for(var key in classes){
+                      var cn = classes[key];
+                      this.classList.remove(cn)
+                    }
+                    var cn_index = this.getAttribute("data-cn_index") || 0;
+                    cn_index = (cn_index + 1) % classes.length;
+                    this.setAttribute("data-cn_index", cn_index);
+                    this.classList.add(classes[cn_index]);
+                  }
+                }
+                c_str += el.innerHTML =  "index: "+i.toString().padStart(2," ")+" | " +get_bar_string(data_view.getUint8(i), 255);
 
 
               } 
-              console_div.innerHTML = c_str;
+
+              if(document.getElementById("int_16_vals") == undefined){
+                var heading = document.createElement("h1");
+              heading.innerText = "int_16_vals";
+              heading.id = "int_16_vals";
+              console_div.appendChild(heading)
+
+              }
+
+              //create int16 view 
+
+              for(var i = 0; i< data_view.byteLength; i+=2){
+
+                var el_id = "bar_string_int16_"+i;
+                var el = document.getElementById(el_id);
+                if(el == undefined){
+                  var el = document.createElement("div");
+                  el.id = el_id;
+                  console_div.appendChild(el);
+                  el.onclick = function(){
+                    for(var key in classes){
+                      var cn = classes[key];
+                      this.classList.remove(cn)
+                    }
+                    var cn_index = this.getAttribute("data-cn_index") || 0;
+                    cn_index = (cn_index + 1) % classes.length;
+                    this.setAttribute("data-cn_index", cn_index);
+                    this.classList.add(classes[cn_index]);
+                  }
+                }
+                c_str += el.innerHTML =  "index: "+i.toString().padStart(2," ")+" | " +get_bar_string( ((255/Math.pow(2, 16))*data_view.getUint16(i)) , 255);
+
+
+              } 
+              //console_div.innerHTML = c_str;
             });
 
 
