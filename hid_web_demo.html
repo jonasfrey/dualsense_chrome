@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>hid demo</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="">
+    <style>
+      *{
+        background:#333;
+        color:#eee;
+      }
+      .console{
+        font-size: 10px;
+        font-family: monospace;
+        white-space: pre;
+
+        color:green;
+      }
+    </style>
+  </head>
+  <body>
+
+    <button id="consentButton">Connect my device</button>
+
+    <div class="console" id="console"></div>
+    <!--[if lt IE 7]>
+      <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+    
+    <script src="" async defer></script>
+
+    <script type="text/javascript">
+    
+    function get_bar_string(value, max, ){
+  value = parseInt(value)
+  var str = ""
+  for(var i =0;i<max;i++){
+    if(i < value){
+      str+= "■"
+    }else{
+      str += " " 
+    }
+  }
+
+  return value.toString().padStart(3, ' ') + " | "+ value.toString(16).padStart(2, ' ') + " | " + value.toString(2).padStart(8, '0') +  " ["+str+"]";
+}
+
+    window.onload = function(){
+
+      if ("hid" in navigator) {
+        // The WebHID API is supported.
+
+        // nice :)
+
+        /**
+         * alright we have to learn a bit theory here 
+         * 
+         * what are TypedArrays ? 
+         * ----------------------
+         * 
+         * an array with items where each item has the same min max value 
+         * for example 
+         * 
+         * TypedArray with unsigned 8-bit integer
+         * new UInt8Array(array_length or array)
+         * [0, 55, 122, 255] -> numbers in dec
+         * [00, 37, 7f, ff] -> numbers in hex
+         * [00000000, 00110111, 01111010, 11111111] -> numbers in bin 
+         * 
+         * new Int8Array
+         * TypedArray with 8-bit signed integer 
+         * new Int8Array() 
+         * [0, 55, -111, 127, -127]
+         * 
+         * 
+         * the data in a TypedArray is restricted 
+         * if you would for example set this 
+         * 
+         * int_8_array[some_index] = 256  
+         * int_8_array[some_index] -> 1
+         * 
+         * int_8_array[some_index] = 257 (would make 257 % 255)
+         * int_8_array[some_index] -> 2
+         * 
+         * 
+         * What is an Array Buffer ?
+         * --------------------------
+         * let ab = new ArrayBuffer(4)
+         * this will create an object with an "binary string" with 4*8 bits 
+         * 
+         * for example this 
+         *        1        2        3        4
+         * 01000001 11001010 10010010 00100101
+         * 
+         * you can then later decide if you want to read this data as 
+         * 
+         * 4 *  8-bit int
+         * 
+         * 2 * 16 bit int ( would group 1-2 and 3-4 together)
+         * 
+         * 1 * 32 bit int ( would group all together 1-2-3-4 )
+         * 
+         * 
+         * What is a DataView ?
+         * --------------------
+         * with a data view you can group an ArrayBuffer
+         * 
+         * var ta = new Uint8Array( [0, 55, 122, 255] )
+         * 
+         * [0, 55, 122, 255] -> numbers in dec
+         * [00, 37, 7f, ff] -> numbers in hex
+         * [00000000, 00110111, 01111010, 11111111] -> numbers in bin 
+         * 
+         * var ab = ta.buffer 
+         * 
+         * var dv1 = new DataView(ab, 1, 2), 
+         * 0                 1         2              3
+         * [00000000, !start 00110111, 01111010 end!, 11111111] 
+         * 
+         * dv1.getInt8(0).toString(2) -> 00110111 
+         * dv1.getInt8(1).toString(2) -> 01111010
+         * 
+         * 
+         * dv1.getInt16(0).toString(2) -> 00110111 and 01111010 -> 0011011101111010
+         * 
+         * 
+         * 
+         * */
+
+      
+        const consentButton = document.getElementById('consentButton');
+
+        const deviceFilters = [{  }];
+
+        consentButton.addEventListener('click', async () => {
+          let device;
+
+
+          try {
+            const devices = await navigator.hid.requestDevice({ filters: deviceFilters });
+            device = devices[0];
+
+
+            await device.open();
+
+
+
+            for (let collection of device.collections) {
+              // A HID collection includes usage, usage page, reports, and subcollections.
+              console.log(`Usage: ${collection.usage}`);
+              console.log(`Usage page: ${collection.usagePage}`);
+
+              for (let inputReport of collection.inputReports) {
+                console.log(`Input report: ${inputReport.reportId}`);
+                // Loop through inputReport.items
+              }
+
+              for (let outputReport of collection.outputReports) {
+                console.log(`Output report: ${outputReport.reportId}`);
+                // Loop through outputReport.items
+              }
+
+              for (let featureReport of collection.featureReports) {
+                console.log(`Feature report: ${featureReport.reportId}`);
+                // Loop through featureReport.items
+              }
+
+              // Loop through subcollections with collection.children
+            }
+
+            device.addEventListener("inputreport", event => {
+              console.log("funbction executed");
+              const { data, device, reportId } = event;
+              const value = data.getUint8(0);
+              
+
+              //draw the dataview 
+              var data_view = data; 
+              var console_div = document.getElementById("console");
+              var c_str = ""
+              for(var i = 0; i< data_view.byteLength; i++){
+                
+                c_str += get_bar_string(data_view.getUint8(i), 255) + "\n";
+
+
+              } 
+              console_div.innerHTML = c_str;
+            });
+
+
+            
+            // later on, when we're finished with it
+            // await device.close();
+
+
+          } catch (error) {
+            console.warn('No device access granted', error);
+            return;
+          }
+        });
+
+      }else{
+        alert("ahhhwww :( looks like your browser is not supporting custom USB devices, please use the latest version of google chrome! ")
+      }
+
+    }
+
+
+    </script>
+  </body>
+</html>
